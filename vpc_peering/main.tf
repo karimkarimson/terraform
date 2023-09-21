@@ -224,3 +224,73 @@ resource "aws_internet_gateway" "igw_b" {
     Name = "igw_b"
   }
 }
+
+# create NACLs
+resource "aws_default_network_acl" "nacl_a" {
+  default_network_acl_id = aws_vpc.a.default_network_acl_id
+}
+resource "aws_default_network_acl" "nacl_b" {
+  default_network_acl_id = aws_vpc.b.default_network_acl_id
+}
+
+# create NACL rules
+resource "aws_network_acl_rule" "allow_ssh_to_vpc_a" {
+  network_acl_id = aws_vpc.a.default_network_acl_id
+  rule_number    = 100
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/24"
+  from_port      = 22
+  to_port        = 22
+}
+resource "aws_network_acl_rule" "allow_ssh_from_vpc_a" {
+  network_acl_id = aws_vpc.a.default_network_acl_id
+  rule_number    = 110
+  egress         = true
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/24"
+  from_port      = 0
+  to_port        = 0
+}
+resource "aws_network_acl_rule" "allow_icmp_from_b" {
+  network_acl_id = aws_vpc.a.default_network_acl_id
+  rule_number    = 200
+  egress         = false
+  protocol       = "1"
+  rule_action    = "allow"
+  cidr_block     = aws_vpc.b.cidr_block
+  from_port      = 8
+  to_port        = 8
+}
+resource "aws_network_acl_rule" "allow_icmp_to_vpc_b" {
+  network_acl_id = aws_vpc.a.default_network_acl_id
+  rule_number    = 210
+  egress         = true
+  protocol       = "1"
+  rule_action    = "allow"
+  cidr_block     = aws_vpc.b.cidr_block
+  from_port      = 0
+  to_port        = 0
+}
+resource "aws_network_acl_rule" "allow_http_from_vpc_b" {
+  network_acl_id = aws_vpc.a.default_network_acl_id
+  rule_number    = 300
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = aws_vpc.b.cidr_block
+  from_port      = 80
+  to_port        = 80
+}
+resource "aws_network_acl_rule" "allow_http_to_vpc_b" {
+  network_acl_id = aws_vpc.a.default_network_acl_id
+  rule_number    = 310
+  egress         = true
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = aws_vpc.b.cidr_block
+  from_port      = 0
+  to_port        = 0
+}
