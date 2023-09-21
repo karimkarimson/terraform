@@ -18,9 +18,13 @@ output "vpc_peering_id" {
   description = "ID of the VPC Peering"
   value       = aws_vpc_peering_connection.aNACHb.id
 }
-output "security_group_id" {
-  description = "ID of the SG"
-  value       = aws_security_group.allow_ssh_http_icmp.id
+output "security_group_id_a" {
+  description = "ID of the SG in VPC A"
+  value       = aws_security_group.instance_a_sg.id
+}
+output "security_group_id_b" {
+  description = "ID of the SG in VPC B"
+  value       = aws_security_group.instance_b_sg.id
 }
 output "eni_id" {
   description = "ID of the ENI for instance in VPC A"

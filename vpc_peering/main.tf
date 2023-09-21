@@ -12,6 +12,7 @@ provider "aws" {
   region = "eu-central-1"
 }
 
+# Create VPCs
 resource "aws_vpc" "a" {
   cidr_block       = "10.0.0.0/24"
   instance_tenancy = "default"
@@ -20,7 +21,6 @@ resource "aws_vpc" "a" {
     Name = "vpc-a"
   }
 }
-
 resource "aws_vpc" "b" {
   cidr_block       = "192.168.0.0/24"
   instance_tenancy = "default"
@@ -29,6 +29,8 @@ resource "aws_vpc" "b" {
     Name = "vpc-b"
   }
 }
+
+# create Subnets in both VPCs
 resource "aws_subnet" "a" {
   vpc_id     = aws_vpc.a.id
   cidr_block = "10.0.0.0/24"
@@ -38,6 +40,7 @@ resource "aws_subnet" "b" {
   cidr_block = "192.168.0.0/24"
 }
 
+# create VPC Peering Connection
 resource "aws_vpc_peering_connection" "aNACHb" {
   vpc_id      = aws_vpc.a.id
   peer_vpc_id = aws_vpc.b.id
@@ -47,57 +50,58 @@ resource "aws_vpc_peering_connection" "aNACHb" {
   }
 }
 
+# create Instances in both VPCs
 resource "aws_instance" "vpca" {
-  ami                         = "ami-0b9094fa2b07038b8"
+  ami                         = "ami-06dd92ecc74fdfb36"
   instance_type               = "t2.micro"
   subnet_id                   = aws_subnet.a.id
   associate_public_ip_address = true
   key_name                    = "ssh-september"
-
   tags = {
     Name = "vpc_a_instance"
   }
-  vpc_security_group_ids = [aws_security_group.allow_ssh_http_icmp.id]
+  vpc_security_group_ids = [aws_security_group.instance_a_sg.id]
+  user_data              = <<-EOF
+              #!/bin/bash
+              sudo apt update -y
+              sudo apt install nginx -y
+  EOF
 }
 resource "aws_instance" "vpcb" {
-  ami                         = "ami-0b9094fa2b07038b8"
+  ami                         = "ami-06dd92ecc74fdfb36"
   instance_type               = "t2.micro"
   subnet_id                   = aws_subnet.b.id
   associate_public_ip_address = true
   key_name                    = "ssh-september"
-
   tags = {
     Name = "vpc_b_instance"
   }
+  vpc_security_group_ids = [aws_security_group.instance_b_sg.id]
+  user_data              = <<-EOF
+              #!/bin/bash
+              sudo apt update -y
+              sudo apt upgrade -y
+              sudo apt install nginx -y
+  EOF
 }
 
-resource "aws_security_group" "allow_ssh_http_icmp" {
-  name        = "allow_ssh_http_icmp"
-  description = "Allow SSH from everywhere HTTP and ICMP from VPC B"
-  vpc_id      = aws_vpc.a.id
 
-  ingress {
-    description = "SSH from Everywhere"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
+# define security_groups per vpc
+resource "aws_security_group" "instance_a_sg" {
+  name        = "instance_a_sg"
+  description = "SG of Instances in VPC A"
+  vpc_id      = aws_vpc.a.id
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  ingress {
-    description = "HTTP from VPC B"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = [aws_vpc.b.cidr_block]
-  }
-  ingress {
-    description = "ICMP from VPC B"
-    from_port   = 8
-    to_port     = 8
-    protocol    = "icmp"
-    cidr_blocks = [aws_vpc.b.cidr_block]
-  }
-
+}
+resource "aws_security_group" "instance_b_sg" {
+  name        = "instance_b_sg"
+  description = "SG of Instances in VPC B"
+  vpc_id      = aws_vpc.b.id
   egress {
     from_port   = 0
     to_port     = 0
@@ -106,26 +110,84 @@ resource "aws_security_group" "allow_ssh_http_icmp" {
   }
 }
 
+# define rules for security_groups
+resource "aws_security_group_rule" "allow_ssh_from_everywhere_a" {
+  security_group_id = aws_security_group.instance_a_sg.id
+  type              = "ingress"
+  description       = "SSH from Everywhere"
+  from_port         = 22
+  to_port           = 22
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+}
+resource "aws_security_group_rule" "allow_http_btw_ab_a" {
+  security_group_id = aws_security_group.instance_a_sg.id
+  type              = "ingress"
+  description       = "HTTP between VPC A and B"
+  from_port         = 80
+  to_port           = 80
+  protocol          = "tcp"
+  cidr_blocks       = [aws_vpc.b.cidr_block]
+}
+resource "aws_security_group_rule" "allow_icmp_btw_ab_a" {
+  security_group_id = aws_security_group.instance_a_sg.id
+  type              = "ingress"
+  description       = "ICMP between VPC A and B"
+  from_port         = 8
+  to_port           = 8
+  protocol          = "icmp"
+  cidr_blocks       = [aws_vpc.b.cidr_block]
+}
+resource "aws_security_group_rule" "allow_ssh_from_everywhere_b" {
+  security_group_id = aws_security_group.instance_b_sg.id
+  type              = "ingress"
+  description       = "SSH from Everywhere"
+  from_port         = 22
+  to_port           = 22
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+}
+resource "aws_security_group_rule" "allow_http_btw_ab_b" {
+  security_group_id = aws_security_group.instance_b_sg.id
+  type              = "ingress"
+  description       = "HTTP between VPC A and B"
+  from_port         = 80
+  to_port           = 80
+  protocol          = "tcp"
+  cidr_blocks       = [aws_vpc.a.cidr_block]
+}
+resource "aws_security_group_rule" "allow_icmp_btw_ab_b" {
+  security_group_id = aws_security_group.instance_b_sg.id
+  type              = "ingress"
+  description       = "ICMP between VPC A and B"
+  from_port         = 8
+  to_port           = 8
+  protocol          = "icmp"
+  cidr_blocks       = [aws_vpc.a.cidr_block]
+}
+
+
+# create ENIs for both VPCs
 resource "aws_network_interface" "eni_vpc_a" {
   description     = "ENI for Subnet VPC A"
   subnet_id       = aws_subnet.a.id
-  security_groups = [aws_security_group.allow_ssh_http_icmp.id]
+  security_groups = [aws_security_group.instance_a_sg.id]
   attachment {
     instance     = aws_instance.vpca.id
     device_index = 1
   }
 }
-
 resource "aws_network_interface" "eni_vpc_b" {
-  description = "ENI for Subnet VPC B"
-  subnet_id   = aws_subnet.b.id
+  description     = "ENI for Subnet VPC B"
+  subnet_id       = aws_subnet.b.id
+  security_groups = [aws_security_group.instance_b_sg.id]
   attachment {
     instance     = aws_instance.vpcb.id
     device_index = 1
   }
 }
 
-
+# edit default route tables
 resource "aws_default_route_table" "a" {
   default_route_table_id = aws_vpc.a.default_route_table_id
   route {
@@ -137,11 +199,8 @@ resource "aws_default_route_table" "a" {
     gateway_id = aws_vpc_peering_connection.aNACHb.id
   }
 }
-
 resource "aws_default_route_table" "b" {
   default_route_table_id = aws_vpc.b.default_route_table_id
-
-  # since this is exactly the route AWS will create, the route will be adopted
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.igw_b.id
@@ -152,16 +211,15 @@ resource "aws_default_route_table" "b" {
   }
 }
 
+# create Internet Gateways
 resource "aws_internet_gateway" "igw_a" {
   vpc_id = aws_vpc.a.id
-
   tags = {
     Name = "igw_a"
   }
 }
 resource "aws_internet_gateway" "igw_b" {
   vpc_id = aws_vpc.b.id
-
   tags = {
     Name = "igw_b"
   }
