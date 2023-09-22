@@ -40,51 +40,143 @@ resource "aws_subnet" "b" {
   cidr_block = "192.168.0.0/24"
 }
 
-# create VPC Peering Connection
-resource "aws_vpc_peering_connection" "aNACHb" {
-  vpc_id      = aws_vpc.a.id
-  peer_vpc_id = aws_vpc.b.id
-  auto_accept = true
-  tags = {
-    Name = "VPC Peering aNACHb"
+# create NACLs
+resource "aws_default_network_acl" "nacl_a" {
+  default_network_acl_id = aws_vpc.a.default_network_acl_id
+  egress {
+    rule_no    = 100
+    action     = "allow"
+    from_port  = 1024
+    to_port    = 65535
+    protocol   = "tcp"
+    cidr_block = "0.0.0.0/0"
+  }
+  egress {
+    rule_no    = 200
+    action     = "allow"
+    from_port  = 80
+    to_port    = 80
+    protocol   = "tcp"
+    cidr_block = "0.0.0.0/0"
+  }
+  egress {
+    rule_no    = 300
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    protocol   = "icmp"
+    from_port  = 0
+    to_port    = 0
+  }
+}
+resource "aws_default_network_acl" "nacl_b" {
+  default_network_acl_id = aws_vpc.b.default_network_acl_id
+  egress {
+    rule_no    = 100
+    action     = "allow"
+    from_port  = 1024
+    to_port    = 65535
+    protocol   = "tcp"
+    cidr_block = "0.0.0.0/0"
+  }
+  egress {
+    rule_no    = 200
+    action     = "allow"
+    from_port  = 80
+    to_port    = 80
+    protocol   = "tcp"
+    cidr_block = "0.0.0.0/0"
+  }
+  egress {
+    rule_no    = 300
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    protocol   = "icmp"
+    from_port  = 0
+    to_port    = 0
   }
 }
 
-# create Instances in both VPCs
-resource "aws_instance" "vpca" {
-  ami                         = "ami-06dd92ecc74fdfb36"
-  instance_type               = "t2.micro"
-  subnet_id                   = aws_subnet.a.id
-  associate_public_ip_address = true
-  key_name                    = "ssh-september"
-  tags = {
-    Name = "vpc_a_instance"
-  }
-  vpc_security_group_ids = [aws_security_group.instance_a_sg.id]
-  user_data              = <<-EOF
-              #!/bin/bash
-              sudo apt update -y
-              sudo apt install nginx -y
-  EOF
+# create NACL rules
+resource "aws_network_acl_rule" "allow_ssh_to_vpc_a" {
+  network_acl_id = aws_vpc.a.default_network_acl_id
+  rule_number    = 200
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/0"
+  from_port      = 22
+  to_port        = 22
 }
-resource "aws_instance" "vpcb" {
-  ami                         = "ami-06dd92ecc74fdfb36"
-  instance_type               = "t2.micro"
-  subnet_id                   = aws_subnet.b.id
-  associate_public_ip_address = true
-  key_name                    = "ssh-september"
-  tags = {
-    Name = "vpc_b_instance"
-  }
-  vpc_security_group_ids = [aws_security_group.instance_b_sg.id]
-  user_data              = <<-EOF
-              #!/bin/bash
-              sudo apt update -y
-              sudo apt upgrade -y
-              sudo apt install nginx -y
-  EOF
+resource "aws_network_acl_rule" "allow_icmp_from_b" {
+  network_acl_id = aws_vpc.a.default_network_acl_id
+  rule_number    = 300
+  egress         = false
+  protocol       = "icmp"
+  icmp_type      = -1
+  icmp_code      = -1
+  rule_action    = "allow"
+  cidr_block     = aws_vpc.b.cidr_block
 }
-
+resource "aws_network_acl_rule" "allow_http_from_vpc_b" {
+  network_acl_id = aws_vpc.a.default_network_acl_id
+  rule_number    = 400
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = aws_vpc.b.cidr_block
+  from_port      = 80
+  to_port        = 80
+}
+resource "aws_network_acl_rule" "allow_http_res_from_anywhere_a" {
+  network_acl_id = aws_vpc.a.default_network_acl_id
+  rule_number    = 500
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/0"
+  from_port      = 1024
+  to_port        = 65535
+}
+resource "aws_network_acl_rule" "allow_ssh_to_vpc_b" {
+  network_acl_id = aws_vpc.b.default_network_acl_id
+  rule_number    = 200
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/0"
+  from_port      = 22
+  to_port        = 22
+}
+resource "aws_network_acl_rule" "allow_icmp_from_a" {
+  network_acl_id = aws_vpc.b.default_network_acl_id
+  rule_number    = 300
+  egress         = false
+  protocol       = "icmp"
+  icmp_type      = -1
+  icmp_code      = -1
+  rule_action    = "allow"
+  cidr_block     = aws_vpc.a.cidr_block
+}
+resource "aws_network_acl_rule" "allow_http_from_vpc_a" {
+  network_acl_id = aws_vpc.b.default_network_acl_id
+  rule_number    = 400
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = aws_vpc.a.cidr_block
+  from_port      = 80
+  to_port        = 80
+}
+resource "aws_network_acl_rule" "allow_res_from_anywhere_b" {
+  network_acl_id = aws_vpc.b.default_network_acl_id
+  rule_number    = 500
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/0"
+  from_port      = 1024
+  to_port        = 65535
+}
 
 # define security_groups per vpc
 resource "aws_security_group" "instance_a_sg" {
@@ -167,6 +259,52 @@ resource "aws_security_group_rule" "allow_icmp_btw_ab_b" {
 }
 
 
+# create VPC Peering Connection
+resource "aws_vpc_peering_connection" "aNACHb" {
+  vpc_id      = aws_vpc.a.id
+  peer_vpc_id = aws_vpc.b.id
+  auto_accept = true
+  tags = {
+    Name = "VPC Peering aNACHb"
+  }
+}
+
+# create Instances in both VPCs
+resource "aws_instance" "vpca" {
+  ami                         = "ami-06dd92ecc74fdfb36"
+  instance_type               = "t2.micro"
+  subnet_id                   = aws_subnet.a.id
+  associate_public_ip_address = true
+  key_name                    = "ssh-september"
+  tags = {
+    Name = "vpc_a_instance"
+  }
+  vpc_security_group_ids = [aws_security_group.instance_a_sg.id]
+  user_data              = <<-EOF
+              #!/bin/bash
+              sudo apt update -y
+              sudo apt upgrade -y
+              sudo apt install nginx -y
+  EOF
+}
+resource "aws_instance" "vpcb" {
+  ami                         = "ami-06dd92ecc74fdfb36"
+  instance_type               = "t2.micro"
+  subnet_id                   = aws_subnet.b.id
+  associate_public_ip_address = true
+  key_name                    = "ssh-september"
+  tags = {
+    Name = "vpc_b_instance"
+  }
+  vpc_security_group_ids = [aws_security_group.instance_b_sg.id]
+  user_data              = <<-EOF
+              #!/bin/bash
+              sudo apt update -y
+              sudo apt upgrade -y
+              sudo apt install nginx -y
+  EOF
+}
+
 # create ENIs for both VPCs
 resource "aws_network_interface" "eni_vpc_a" {
   description     = "ENI for Subnet VPC A"
@@ -223,74 +361,4 @@ resource "aws_internet_gateway" "igw_b" {
   tags = {
     Name = "igw_b"
   }
-}
-
-# create NACLs
-resource "aws_default_network_acl" "nacl_a" {
-  default_network_acl_id = aws_vpc.a.default_network_acl_id
-}
-resource "aws_default_network_acl" "nacl_b" {
-  default_network_acl_id = aws_vpc.b.default_network_acl_id
-}
-
-# create NACL rules
-resource "aws_network_acl_rule" "allow_ssh_to_vpc_a" {
-  network_acl_id = aws_vpc.a.default_network_acl_id
-  rule_number    = 100
-  egress         = false
-  protocol       = "tcp"
-  rule_action    = "allow"
-  cidr_block     = "0.0.0.0/24"
-  from_port      = 22
-  to_port        = 22
-}
-resource "aws_network_acl_rule" "allow_ssh_from_vpc_a" {
-  network_acl_id = aws_vpc.a.default_network_acl_id
-  rule_number    = 110
-  egress         = true
-  protocol       = "tcp"
-  rule_action    = "allow"
-  cidr_block     = "0.0.0.0/24"
-  from_port      = 0
-  to_port        = 0
-}
-resource "aws_network_acl_rule" "allow_icmp_from_b" {
-  network_acl_id = aws_vpc.a.default_network_acl_id
-  rule_number    = 200
-  egress         = false
-  protocol       = "1"
-  rule_action    = "allow"
-  cidr_block     = aws_vpc.b.cidr_block
-  from_port      = 8
-  to_port        = 8
-}
-resource "aws_network_acl_rule" "allow_icmp_to_vpc_b" {
-  network_acl_id = aws_vpc.a.default_network_acl_id
-  rule_number    = 210
-  egress         = true
-  protocol       = "1"
-  rule_action    = "allow"
-  cidr_block     = aws_vpc.b.cidr_block
-  from_port      = 0
-  to_port        = 0
-}
-resource "aws_network_acl_rule" "allow_http_from_vpc_b" {
-  network_acl_id = aws_vpc.a.default_network_acl_id
-  rule_number    = 300
-  egress         = false
-  protocol       = "tcp"
-  rule_action    = "allow"
-  cidr_block     = aws_vpc.b.cidr_block
-  from_port      = 80
-  to_port        = 80
-}
-resource "aws_network_acl_rule" "allow_http_to_vpc_b" {
-  network_acl_id = aws_vpc.a.default_network_acl_id
-  rule_number    = 310
-  egress         = true
-  protocol       = "tcp"
-  rule_action    = "allow"
-  cidr_block     = aws_vpc.b.cidr_block
-  from_port      = 0
-  to_port        = 0
 }
