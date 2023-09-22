@@ -57,6 +57,8 @@ resource "aws_default_network_acl" "nacl_a" {
     protocol   = "icmp"
     from_port  = 0
     to_port    = 0
+    icmp_code  = -1
+    icmp_type  = -1
     cidr_block = aws_vpc.b.cidr_block
   }
   ingress {
@@ -98,6 +100,8 @@ resource "aws_default_network_acl" "nacl_a" {
     protocol   = "icmp"
     from_port  = 0
     to_port    = 0
+    icmp_code  = -1
+    icmp_type  = -1
   }
 }
 resource "aws_default_network_acl" "nacl_b" {
@@ -117,6 +121,8 @@ resource "aws_default_network_acl" "nacl_b" {
     from_port  = 0
     to_port    = 0
     cidr_block = aws_vpc.a.cidr_block
+    icmp_code  = -1
+    icmp_type  = -1
   }
   ingress {
     rule_no    = 400
@@ -157,6 +163,8 @@ resource "aws_default_network_acl" "nacl_b" {
     protocol   = "icmp"
     from_port  = 0
     to_port    = 0
+    icmp_code  = -1
+    icmp_type  = -1
   }
 }
 
@@ -165,6 +173,27 @@ resource "aws_security_group" "instance_a_sg" {
   name        = "instance_a_sg"
   description = "SG of Instances in VPC A"
   vpc_id      = aws_vpc.a.id
+  ingress {
+    description = "SSH from Everywhere"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    description = "HTTP between VPC A and B"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.b.cidr_block]
+  }
+  ingress {
+    description = "ICMP between VPC A and B"
+    from_port   = -1
+    to_port     = -1
+    protocol    = "icmp"
+    cidr_blocks = [aws_vpc.b.cidr_block]
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -176,6 +205,27 @@ resource "aws_security_group" "instance_b_sg" {
   name        = "instance_b_sg"
   description = "SG of Instances in VPC B"
   vpc_id      = aws_vpc.b.id
+  ingress {
+    description = "SSH from Everywhere"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    description = "HTTP between VPC A and B"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.a.cidr_block]
+  }
+  ingress {
+    description = "ICMP between VPC A and B"
+    from_port   = -1
+    to_port     = -1
+    protocol    = "icmp"
+    cidr_blocks = [aws_vpc.a.cidr_block]
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -183,63 +233,6 @@ resource "aws_security_group" "instance_b_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-
-# define rules for security_groups
-resource "aws_security_group_rule" "allow_ssh_from_everywhere_a" {
-  security_group_id = aws_security_group.instance_a_sg.id
-  type              = "ingress"
-  description       = "SSH from Everywhere"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-}
-resource "aws_security_group_rule" "allow_http_btw_ab_a" {
-  security_group_id = aws_security_group.instance_a_sg.id
-  type              = "ingress"
-  description       = "HTTP between VPC A and B"
-  from_port         = 80
-  to_port           = 80
-  protocol          = "tcp"
-  cidr_blocks       = [aws_vpc.b.cidr_block]
-}
-resource "aws_security_group_rule" "allow_icmp_btw_ab_a" {
-  security_group_id = aws_security_group.instance_a_sg.id
-  type              = "ingress"
-  description       = "ICMP between VPC A and B"
-  from_port         = 8
-  to_port           = 8
-  protocol          = "icmp"
-  cidr_blocks       = [aws_vpc.b.cidr_block]
-}
-resource "aws_security_group_rule" "allow_ssh_from_everywhere_b" {
-  security_group_id = aws_security_group.instance_b_sg.id
-  type              = "ingress"
-  description       = "SSH from Everywhere"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-}
-resource "aws_security_group_rule" "allow_http_btw_ab_b" {
-  security_group_id = aws_security_group.instance_b_sg.id
-  type              = "ingress"
-  description       = "HTTP between VPC A and B"
-  from_port         = 80
-  to_port           = 80
-  protocol          = "tcp"
-  cidr_blocks       = [aws_vpc.a.cidr_block]
-}
-resource "aws_security_group_rule" "allow_icmp_btw_ab_b" {
-  security_group_id = aws_security_group.instance_b_sg.id
-  type              = "ingress"
-  description       = "ICMP between VPC A and B"
-  from_port         = 8
-  to_port           = 8
-  protocol          = "icmp"
-  cidr_blocks       = [aws_vpc.a.cidr_block]
-}
-
 
 # create VPC Peering Connection
 resource "aws_vpc_peering_connection" "aNACHb" {
