@@ -43,6 +43,38 @@ resource "aws_subnet" "b" {
 # create NACLs
 resource "aws_default_network_acl" "nacl_a" {
   default_network_acl_id = aws_vpc.a.default_network_acl_id
+  ingress {
+    rule_no    = 200
+    action     = "allow"
+    protocol   = "tcp"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 22
+    to_port    = 22
+  }
+  ingress {
+    rule_no    = 300
+    action     = "allow"
+    protocol   = "icmp"
+    from_port  = 0
+    to_port    = 0
+    cidr_block = aws_vpc.b.cidr_block
+  }
+  ingress {
+    rule_no    = 400
+    action     = "allow"
+    protocol   = "tcp"
+    cidr_block = aws_vpc.b.cidr_block
+    from_port  = 80
+    to_port    = 80
+  }
+  ingress {
+    rule_no    = 500
+    action     = "allow"
+    protocol   = "tcp"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 1024
+    to_port    = 65535
+  }
   egress {
     rule_no    = 100
     action     = "allow"
@@ -70,6 +102,38 @@ resource "aws_default_network_acl" "nacl_a" {
 }
 resource "aws_default_network_acl" "nacl_b" {
   default_network_acl_id = aws_vpc.b.default_network_acl_id
+  ingress {
+    rule_no    = 200
+    action     = "allow"
+    protocol   = "tcp"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 22
+    to_port    = 22
+  }
+  ingress {
+    rule_no    = 300
+    action     = "allow"
+    protocol   = "icmp"
+    from_port  = 0
+    to_port    = 0
+    cidr_block = aws_vpc.a.cidr_block
+  }
+  ingress {
+    rule_no    = 400
+    action     = "allow"
+    protocol   = "tcp"
+    cidr_block = aws_vpc.a.cidr_block
+    from_port  = 80
+    to_port    = 80
+  }
+  ingress {
+    rule_no    = 500
+    action     = "allow"
+    protocol   = "tcp"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 1024
+    to_port    = 65535
+  }
   egress {
     rule_no    = 100
     action     = "allow"
@@ -94,88 +158,6 @@ resource "aws_default_network_acl" "nacl_b" {
     from_port  = 0
     to_port    = 0
   }
-}
-
-# create NACL rules
-resource "aws_network_acl_rule" "allow_ssh_to_vpc_a" {
-  network_acl_id = aws_vpc.a.default_network_acl_id
-  rule_number    = 200
-  egress         = false
-  protocol       = "tcp"
-  rule_action    = "allow"
-  cidr_block     = "0.0.0.0/0"
-  from_port      = 22
-  to_port        = 22
-}
-resource "aws_network_acl_rule" "allow_icmp_from_b" {
-  network_acl_id = aws_vpc.a.default_network_acl_id
-  rule_number    = 300
-  egress         = false
-  protocol       = "icmp"
-  icmp_type      = -1
-  icmp_code      = -1
-  rule_action    = "allow"
-  cidr_block     = aws_vpc.b.cidr_block
-}
-resource "aws_network_acl_rule" "allow_http_from_vpc_b" {
-  network_acl_id = aws_vpc.a.default_network_acl_id
-  rule_number    = 400
-  egress         = false
-  protocol       = "tcp"
-  rule_action    = "allow"
-  cidr_block     = aws_vpc.b.cidr_block
-  from_port      = 80
-  to_port        = 80
-}
-resource "aws_network_acl_rule" "allow_http_res_from_anywhere_a" {
-  network_acl_id = aws_vpc.a.default_network_acl_id
-  rule_number    = 500
-  egress         = false
-  protocol       = "tcp"
-  rule_action    = "allow"
-  cidr_block     = "0.0.0.0/0"
-  from_port      = 1024
-  to_port        = 65535
-}
-resource "aws_network_acl_rule" "allow_ssh_to_vpc_b" {
-  network_acl_id = aws_vpc.b.default_network_acl_id
-  rule_number    = 200
-  egress         = false
-  protocol       = "tcp"
-  rule_action    = "allow"
-  cidr_block     = "0.0.0.0/0"
-  from_port      = 22
-  to_port        = 22
-}
-resource "aws_network_acl_rule" "allow_icmp_from_a" {
-  network_acl_id = aws_vpc.b.default_network_acl_id
-  rule_number    = 300
-  egress         = false
-  protocol       = "icmp"
-  icmp_type      = -1
-  icmp_code      = -1
-  rule_action    = "allow"
-  cidr_block     = aws_vpc.a.cidr_block
-}
-resource "aws_network_acl_rule" "allow_http_from_vpc_a" {
-  network_acl_id = aws_vpc.b.default_network_acl_id
-  rule_number    = 400
-  egress         = false
-  protocol       = "tcp"
-  rule_action    = "allow"
-  cidr_block     = aws_vpc.a.cidr_block
-  from_port      = 80
-  to_port        = 80
-}
-resource "aws_network_acl_rule" "allow_res_from_anywhere_b" {
-  network_acl_id = aws_vpc.b.default_network_acl_id
-  rule_number    = 500
-  egress         = false
-  protocol       = "tcp"
-  rule_action    = "allow"
-  cidr_block     = "0.0.0.0/0"
-  from_port      = 1024
-  to_port        = 65535
 }
 
 # define security_groups per vpc
