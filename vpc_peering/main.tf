@@ -57,6 +57,8 @@ resource "aws_default_network_acl" "nacl_a" {
     protocol   = "icmp"
     from_port  = 0
     to_port    = 0
+    icmp_code  = -1
+    icmp_type  = -1
     cidr_block = aws_vpc.b.cidr_block
   }
   ingress {
@@ -98,6 +100,8 @@ resource "aws_default_network_acl" "nacl_a" {
     protocol   = "icmp"
     from_port  = 0
     to_port    = 0
+    icmp_code  = -1
+    icmp_type  = -1
   }
 }
 resource "aws_default_network_acl" "nacl_b" {
@@ -117,6 +121,8 @@ resource "aws_default_network_acl" "nacl_b" {
     from_port  = 0
     to_port    = 0
     cidr_block = aws_vpc.a.cidr_block
+    icmp_code  = -1
+    icmp_type  = -1
   }
   ingress {
     rule_no    = 400
@@ -157,6 +163,8 @@ resource "aws_default_network_acl" "nacl_b" {
     protocol   = "icmp"
     from_port  = 0
     to_port    = 0
+    icmp_code  = -1
+    icmp_type  = -1
   }
 }
 
