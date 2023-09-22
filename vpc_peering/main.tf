@@ -57,8 +57,8 @@ resource "aws_default_network_acl" "nacl_a" {
     protocol   = "icmp"
     from_port  = 0
     to_port    = 0
-    icmp_code  = -1
-    icmp_type  = -1
+    icmp_code = -1
+    icmp_type = -1
     cidr_block = aws_vpc.b.cidr_block
   }
   ingress {
@@ -100,8 +100,8 @@ resource "aws_default_network_acl" "nacl_a" {
     protocol   = "icmp"
     from_port  = 0
     to_port    = 0
-    icmp_code  = -1
-    icmp_type  = -1
+    icmp_code = -1
+    icmp_type = -1
   }
 }
 resource "aws_default_network_acl" "nacl_b" {
@@ -121,8 +121,8 @@ resource "aws_default_network_acl" "nacl_b" {
     from_port  = 0
     to_port    = 0
     cidr_block = aws_vpc.a.cidr_block
-    icmp_code  = -1
-    icmp_type  = -1
+    icmp_code = -1
+    icmp_type = -1
   }
   ingress {
     rule_no    = 400
@@ -163,8 +163,8 @@ resource "aws_default_network_acl" "nacl_b" {
     protocol   = "icmp"
     from_port  = 0
     to_port    = 0
-    icmp_code  = -1
-    icmp_type  = -1
+    icmp_code = -1
+    icmp_type = -1
   }
 }
 
@@ -220,6 +220,15 @@ resource "aws_security_group_rule" "allow_icmp_btw_ab_a" {
   protocol          = "icmp"
   cidr_blocks       = [aws_vpc.b.cidr_block]
 }
+resource "aws_security_group_rule" "allow_icmp_btw_ab_a" {
+  security_group_id = aws_security_group.instance_a_sg.id
+  type              = "ingress"
+  description       = "ICMP between VPC A and B"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "icmp"
+  cidr_blocks       = [aws_vpc.b.cidr_block]
+}
 resource "aws_security_group_rule" "allow_ssh_from_everywhere_b" {
   security_group_id = aws_security_group.instance_b_sg.id
   type              = "ingress"
@@ -244,6 +253,15 @@ resource "aws_security_group_rule" "allow_icmp_btw_ab_b" {
   description       = "ICMP between VPC A and B"
   from_port         = 8
   to_port           = 8
+  protocol          = "icmp"
+  cidr_blocks       = [aws_vpc.a.cidr_block]
+}
+resource "aws_security_group_rule" "allow_icmp_btw_ab_b" {
+  security_group_id = aws_security_group.instance_b_sg.id
+  type              = "ingress"
+  description       = "ICMP between VPC A and B"
+  from_port         = 0
+  to_port           = 0
   protocol          = "icmp"
   cidr_blocks       = [aws_vpc.a.cidr_block]
 }
