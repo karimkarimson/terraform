@@ -38,16 +38,11 @@ module "vpc" {
   # one public SN per VPC
   public_subnets = [var.vpc_cidr_blocks[count.index]]
 
-  # NAT 
-  # NAT needs private route Table, error in line 1088 of terraform-aws-vpc/main.tf
-  # enable_nat_gateway = true
-
   # Internet Gateway
   create_igw = true
 
   # Defaults
-  manage_default_network_acl    = true
-  manage_default_security_group = true
+  manage_default_network_acl = true
 
   # define NACLs
   default_network_acl_name = "SSH from everywhere, HTTP and PING between VPC 1 and 2"
@@ -101,7 +96,7 @@ module "vpc" {
       "from_port"  = 80,
       "to_port"    = 80,
       "protocol"   = "tcp",
-      "cidr_block" = (count.index == 0 ? var.vpc_cidr_blocks[1] : var.vpc_cidr_blocks[0]),
+      "cidr_block" = "0.0.0.0/0"
       "rule_no"    = 200
     },
     {
@@ -115,75 +110,85 @@ module "vpc" {
       "rule_no"    = 300
     }
   ]
+}
 
-  # define Security Groups
-  default_security_group_name = "SG of VPC ${count.index + 1}"
-  default_security_group_ingress = [
+# define Security Groups
+module "sg" {
+  source     = "terraform-aws-modules/security-group/aws"
+  version    = ">= 5.1.0"
+  depends_on = [module.vpc]
+
+  count       = length(var.vpc_cidr_blocks)
+  vpc_id      = module.vpc.*.vpc_id[count.index]
+  description = "SG of Instances in VPC ${count.index + 1}, ssh from everywhere, http and ping between VPC 1 and 2"
+  name        = "SG of VPC ${count.index + 1}"
+
+  create_sg = true
+
+  ingress_with_cidr_blocks = [
     {
       "description" = "SSH from Everywhere",
       "from_port"   = 22,
       "to_port"     = 22,
       "protocol"    = "tcp",
-      "cidr_ipv4"   = "0.0.0.0/0"
+      "cidr_blocks" = "0.0.0.0/0"
     },
     {
       "description" = "HTTP between VPC 1 and 2",
       "from_port"   = 80,
       "to_port"     = 80,
       "protocol"    = "tcp",
-      "cidr_ipv4"   = (count.index == 0 ? var.vpc_cidr_blocks[1] : var.vpc_cidr_blocks[0])
+      "cidr_blocks" = (count.index == 0 ? var.vpc_cidr_blocks[1] : var.vpc_cidr_blocks[0])
     },
     {
       "description" = "ICMP between VPC 1 and 2",
       "from_port"   = -1,
       "to_port"     = -1,
       "protocol"    = "icmp",
-      "cidr_ipv4"   = (count.index == 0 ? var.vpc_cidr_blocks[1] : var.vpc_cidr_blocks[0])
+      "cidr_blocks" = (count.index == 0 ? var.vpc_cidr_blocks[1] : var.vpc_cidr_blocks[0])
     }
   ]
-  default_security_group_egress = [
+  egress_with_cidr_blocks = [
     {
-      "from_port" = 0,
-      "to_port"   = 0,
-      "protocol"  = "-1",
-      "cidr_ipv4" = "0.0.0.0/0"
+      "from_port"   = 0,
+      "to_port"     = 0,
+      "protocol"    = "-1",
+      "cidr_blocks" = "0.0.0.0/0"
     }
   ]
-
 }
 
-/*
 # create VPC Peering Connection
-resource "aws_vpc_peering_connection" "aNACHb" {
+resource "aws_vpc_peering_connection" "From_1_to_2" {
   depends_on  = [module.vpc]
-  vpc_id      = vpc.vpc-0.vpc_id
-  peer_vpc_id = vpc.vpc-1.vpc_id
+  vpc_id      = module.vpc.*.vpc_id[0]
+  peer_vpc_id = module.vpc.*.vpc_id[1]
   auto_accept = true
   tags = {
-    Name = "VPC Peering aNACHb"
+    Name = "VPC Peering From 1 to 2"
   }
 }
 
 # edit default route tables
-resource "aws_default_route_table" "default-RT" {
+resource "aws_default_route_table" "RT" {
   depends_on = [module.vpc]
 
   count = length(var.vpc_cidr_blocks)
 
-  default_route_table_id = vpc.vpc-[count.index + 1].default_vpc_route_table_id
+  default_route_table_id = module.vpc.*.default_route_table_id[count.index]
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = vpc.vpc-[count.index + 1].igw_id
+    gateway_id = module.vpc.*.igw_id[count.index]
   }
   route {
-    cidr_block = "192.168.0.0/24"
-    gateway_id = aws_vpc_peering_connection.aNACHb.id
+    cidr_block = var.vpc_cidr_blocks[count.index == 0 ? 1 : 0]
+    gateway_id = aws_vpc_peering_connection.From_1_to_2.id
   }
 }
 
 # create Instances in both VPCs
 module "instances" {
-  depends_on = [module.vpc]
+  depends_on = [module.sg]
   source     = "terraform-aws-modules/ec2-instance/aws"
   version    = "> 5.1.0"
 
@@ -192,13 +197,13 @@ module "instances" {
   name                        = "instance-vpc-${count.index + 1}"
   ami                         = "ami-06dd92ecc74fdfb36"
   instance_type               = "t2.micro"
-  subnet_id                   = vpc.vpc-[count.index + 1].public_subnets[0]
+  subnet_id                   = module.vpc.*.public_subnets[count.index][0]
   associate_public_ip_address = true
   key_name                    = "ssh-september"
   tags = {
     Name = "instance-vpc-${count.index + 1}"
   }
-  vpc_security_group_ids = [vpc.vpc-[count.index + 1].default_security_group_id]
+  vpc_security_group_ids = [module.sg.*.security_group_id[count.index]]
   user_data              = <<-EOF
               #!/bin/bash
               sudo apt update -y
@@ -209,14 +214,15 @@ module "instances" {
 
 # create ENIs for both VPCs
 resource "aws_network_interface" "enis" {
-  depends_on      = [module.instances]
-  count           = length(var.vpc_cidr_blocks)
-  description     = "ENI for Subnet VPC-${count.index + 1}"
-  subnet_id       = vpc.vpc-[count.index + 1].public_subnets[0]
-  security_groups = [vpc.vpc-[count.index + 1].default_security_group_id]
+  depends_on = [module.instances]
+  count      = length(var.vpc_cidr_blocks)
+
+  description = "ENI for Subnet VPC-${count.index + 1}"
+
+  subnet_id       = module.vpc.*.public_subnets[count.index][0]
+  security_groups = [module.vpc.*.default_security_group_id[count.index]]
   attachment {
-    instance     = instances.instance-vpc-[count.index + 1].id
+    instance     = module.instances.*.id[count.index]
     device_index = 1
   }
 }
-*/
