@@ -1,0 +1,8 @@
+# Show Log-Groups
+aws logs describe-log-groups --profile techstarte 
+
+# Show Specific Log Group
+aws logs describe-log-streams --profile techstarte --log-group-name /aws/lambda/snailmail 
+
+# Show Log Events & escape all special characters!
+aws logs get-log-events --profile techstarte --log-group-name /aws/lambda/snailmail --log-stream-name 2023/10/24/\[\$LATEST\]9812e05bc79c46c1a64a3b00eca2abb8 > snailmail.logs 
