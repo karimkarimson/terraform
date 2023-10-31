@@ -1,0 +1,34 @@
+- name: Intro to Ansible Playbooks
+  hosts: all
+
+  tasks:
+    - name: Add the user 'foo'
+      ansible.builtin.user:
+        name: foo
+      become: yes
+      become_method: sudo
+    - name: update all packages
+      apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+      become: yes
+    - name: upgrade all packages
+      apt: upgrade=dist force_apt_get=yes
+      become: yes
+    - name: install vim
+      apt:
+        name: 'vim'
+        state: latest
+      become: yes
+    - name: install nginx
+      apt:
+        name: nginx
+        state: latest
+      become: yes
+    - name: copy index.html to remote
+      ansible.builtin.copy:
+        src: ./index.html
+        dest: /var/www/html/
+      become: yes
+    - name: reload nginx-server
+      service:
+        name: nginx
+        state: reloaded
