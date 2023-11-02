@@ -1,0 +1,58 @@
+.t {
+    font-size: 1.1em;
+}
+.mp {
+    margin: 10px;
+    padding: 10px
+}
+.f {
+    display: flex;
+    flex-wrap: wrap;
+}
+body {
+    width: 60%;
+    .header {
+        text-align: center;
+        ul {
+            text-align: center;
+        }
+    }
+}
+.inputs {
+    align-items: center;
+    flex-direction: row;
+    gap: 20px;
+    justify-content: space-evenly;
+    input {
+        font-size: 1.1em;
+        margin: 10px;
+    }
+}
+.buttons {
+    flex-direction: column;
+    gap: 20px;
+    justify-content: space-around;    
+    div {
+        text-align: center;
+        border: 1px solid black;
+    }
+    div:hover{
+        background-color: lightcyan;
+        cursor: pointer;
+    }
+    div:onclick {
+        background-color: skyblue;
+    }
+}
+.outputs {
+    flex-direction: row;
+    justify-content: space-evenly;
+}
+.messageelement {
+    border: 1px solid chocolate;
+}
+
+#secretmessage {
+    font-size: 1.8em;
+    border: 1px solid darkred;
+}

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <script defer src="script.js"></script>
+    <title>Burn2Read</title>
+</head>
+<body class="t">
+    <div class="header mp">
+        <h1>Burn 2 Read</h1>
+        <br>
+        <h3>What you can do: </h3>
+        <ul>
+            <p>&#x2022; To send a message: Enter a message, a sender, a recipient and a password</p>
+            <p>&#x2022; To list all available messages</p>
+            <p>&#x2022; To retrieve a message by entering the UUID and Password</p>
+        </ul>
+    </div>
+    <br>
+    <br>
+    <div class="inputs mp t f">
+        <form action="index.php" method="post">
+            <input type="text" name="message" id="message" placeholder="Message">
+            <br>
+            <input type="text" name="recipient" id="recipient" placeholder="Recipient">
+            <br>
+            <input type="text" name="sender" id="sender" placeholder="Sender">
+            <br>
+            <input type="password" name="password" id="password" placeholder="Password">
+            <br>
+            <input type="text" name="uuid" id="uuid" placeholder="Message UUID">
+        </form>
+        <div class="buttons f">
+            <div class="mp" id="sendmessage">Send message</div>
+            <div class="mp" id="showallmessages">Show all Messages</div>
+            <div class="mp" id="getmessage">Get this Message</div>
+        </div>
+    </div>
+    <div class="outputs mp f" id="outputs"></div>
+</body>
+</html>

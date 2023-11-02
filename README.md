@@ -2,24 +2,25 @@
 
 This is my Terraform Playground.
 
-- for now I'm recreating Infrastructure that I've created manually before
+- I'm recreating Infrastructure that I've created manually before
 - next I'll try to refactor my code, so it ll be not as repetetive
 
-:point_right: Also checkout my great collaborator: [Ramzi Attrous](https://github.com/ramziatrous)
-
+---
 
 ## Projects:
 
-### VPC-Peering :white_check_mark:
-- Set up 2 VPCs with one public subnet and instance each
-- configure NACL and SG so that:
-> - ssh connection is possible from everywhere
-> - http & ping is possible only between the peered VPCs
+### [Serverless Messaging Service](./burn2read/README.md)
+- This service enables you to leave a password protected & encrypted message for another user.
 
-### VPC with private and public SN plus ELB
-- set up a VPC with:
-> - 2 public subnets
-> - 2 private subnets
-> - one instance in each private subnet
-> - one bastion-host/jump-host in a public subnet
-- set up a ELB to balance http-requests between the private instances
+### [Load-Balancer](./load-balancer/README.md)
+- Sets up an Application Load Balancer targeting three NGINX-Servers in three different public Subnets. 
+
+### [SQS-Snailmail](./sqs/README.md)
+- Sets up an SQS queue that triggers a Lambda function that creates Cloud Watch Logs.
+
+### [VPC-Peering](./vpc_peering/README.md) 
+- Set up 2 VPCs with one public subnet and instance each
+- Connect the 2 VPCs via VPC-Peering
+
+### [Full VPC](./full-vpc/README.md)
+- Set up a full VPC with private and public subnets, NAT Gateways, and **Jumphosts**
