@@ -17,3 +17,12 @@ variable "cidrs_egress" {
 variable "bucket_name" {
   type = string
 }
+variable "role_name" {
+  type = string
+}
+variable "policy_actions" {
+  type = list(string)
+}
+variable "policy_effect" {
+  type = string
+}

@@ -1,12 +1,14 @@
 module "ec2" {
   source = "./modules/ec2"
 
+  # Variables
   instance_profile = module.role.instance_role_name
   key_name = var.key_name
   profile_name = var.aws_profile
   cidrs_ssh_ingress = var.cidrs_ssh_ingress
   cidrs_egress = var.cidrs_egress
 
+  # User-Data Script
   instance_script = <<-EOF
     #!/bin/bash
     echo "########## Updating Packages  #########" > /home/ec2-user/userdata.log
@@ -37,8 +39,9 @@ module "s3" {
 module "role" {
   source = "./modules/iam"
 
-  role_name = "MyEC2InstanceRole"
-  policy_actions = [ "s3:*" ]
-  policy_effect = "Allow"
+  role_name = var.role_name
+  policy_actions = var.policy_actions
+  policy_effect = var.policy_effect
+
   policy_resources = [module.s3.bucket_arn, "${module.s3.bucket_arn}/*"]
 }
